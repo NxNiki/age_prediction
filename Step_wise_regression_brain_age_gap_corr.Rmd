@@ -1,0 +1,244 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+rm(list = ls())
+
+library(MASS)
+if (.Platform$OS.type == 'windows'){
+  setwd("C:/Users/Xin/Dropbox/BrainImaging_ML")
+} else{
+  setwd("~/Dropbox/BrainImaging_ML")
+}
+
+scale.0.1 = function(dat) {
+    # the output will be coerced to matrix.
+    
+    dat = as.matrix(dat)
+    
+    mins = apply(dat, 2, min)
+    maxs = apply(dat, 2, max)
+    
+    scaled.dat = scale(dat, center = mins, scale = maxs - mins)
+    return(scaled.dat)
+}
+
+step.direction = 'backward'
+
+```
+
+Stepwise regression for all subjects brain age:
+
+```{r}
+
+# stepwise regression with behavioral scores to predict brain age:
+
+#feature.name = 'GMV&DTI'
+#feature.name = 'GMV&rsfMRI'
+feature.name = '' # empty is for 'multi-modal'
+
+file_list = list(paste('out03_subject_behav_ridge', feature.name, '.csv', sep = ''), 
+                 paste('out03_subject_behav_svr', feature.name, '.csv', sep = ''), 
+                 paste('out03_subject_behav_gpr', feature.name, '.csv', sep = ''), 
+                 paste('out03_subject_behav_dnn', feature.name, '.csv', sep = ''))
+
+result.list = list(Ridge = NA, SVR = NA, GPR = NA, DNN = NA)
+
+for (i in 1:length(file_list)){
+  ifile = paste('result/allsubjects/', file_list[i], sep = '')
+  data.behav = read.csv(ifile)
+  
+  #data.behav$Sex = NULL
+  data.behav$SUBJID = NULL
+  #data.behav$age.gap = NULL
+  data.behav$age.gap.corr = NULL
+  data.behav$age.gap.corr.sex = NULL
+  data.behav$age.gap.corr.intersex = NULL
+  data.behav$brain.age.fit = NULL
+  data.behav$brain.age.fit.sex = NULL
+  data.behav$brain.age.fit.intersex = NULL
+  
+  #data.behav$brain.age = NULL
+  data.behav$chronological.age = NULL
+  
+  data.behav = data.behav[complete.cases(data.behav), ]
+  binary.col = which(colnames(data.behav)=='Sex') 
+  data.behav[, -binary.col] = scale.0.1(data.behav[, -binary.col])
+  #data.behav$chronological.age2 = data.behav$chronological.age^2 
+  
+  # Fit the full model 
+  full.model <- lm(brain.age ~., data = data.behav)
+  
+  # Stepwise regression model
+  step.model <- stepAIC(full.model, direction = step.direction, 
+                        trace = FALSE)
+  step.summary = summary(step.model)
+  
+  result = step.summary$coefficients[, c(1,4)]
+  result = rbind(result, as.matrix(t(c(step.summary$adj.r.squared, ''))))
+  row.names(result)[nrow(result)] = 'Adjusted Rsquared'
+  
+  result.list[[i]] =  as.data.frame(result)
+}
+```
+
+Stepwise regression for all subjects chronological age:
+
+```{r}
+ifile = paste('result/allsubjects/', file_list[[1]], sep = '')
+data.behav = read.csv(ifile)
+
+#data.behav$Sex = NULL
+data.behav$SUBJID = NULL
+data.behav$age.gap = NULL
+data.behav$age.gap.corr = NULL
+data.behav$age.gap.corr.sex = NULL
+data.behav$age.gap.corr.intersex = NULL
+data.behav$brain.age.fit = NULL
+data.behav$brain.age.fit.sex = NULL
+data.behav$brain.age.fit.intersex = NULL
+
+data.behav$brain.age = NULL
+#data.behav$chronological.age = NULL
+
+data.behav = data.behav[complete.cases(data.behav), ]
+binary.col = which(colnames(data.behav)=='Sex') 
+data.behav[, -binary.col] = scale.0.1(data.behav[, -binary.col])
+
+# Fit the full model 
+full.model <- lm(chronological.age ~., data = data.behav)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = step.direction, 
+                      trace = FALSE)
+step.summary = summary(step.model)
+
+result = step.summary$coefficients[, c(1,4)]
+result = rbind(result, as.matrix(t(c(step.summary$adj.r.squared, ''))))
+row.names(result)[nrow(result)] = 'Adjusted Rsquared'
+
+result.list$ChronoAge =  as.data.frame(result)
+
+```
+
+
+```{r}
+
+library(plyr)
+
+for(i in 1:length(result.list)){
+  colnames(result.list[[i]]) <- paste0( names(result.list)[i], "_", colnames(result.list[[i]]) )
+  result.list[[i]]$ROWNAMES  <- rownames(result.list[[i]])
+}
+ 
+out <- join_all( result.list, by="ROWNAMES", type="full" )
+rownames(out) <- out$ROWNAMES; 
+out$ROWNAMES <- NULL
+
+idx.rsquare = which(rownames(out)=='Adjusted Rsquared')
+out = rbind(out[-idx.rsquare,], out[idx.rsquare,])
+print(out)
+
+#write.csv(out, paste0('result/allsubjects/stepwise_regression_allsubjects_backward_brain.age.fit.intersex_nogender', feature.name, '.csv'))
+write.csv(out, paste0('result/allsubjects/stepwise_regression_allsubjects_backward_brain.age_nogender', feature.name, '.csv'))
+
+```
+
+HC and disorder groups trained with HC/all subjects:
+
+```{r}
+# stepwise regression with behavioral scores to predict brain age gap:
+
+# trained with HC:
+#file_list = list('out03_subject_behav_ridge_HC.csv',
+#                 'out03_subject_behav_ridge_smry_phb.csv',
+#                 'out03_subject_behav_ridge_smry_ptd.csv',
+#                 'out03_subject_behav_ridge_smry_soc.csv')
+
+#file_list = list('out03_subject_behav_svr_HC.csv',
+#                 'out03_subject_behav_svr_smry_phb.csv',
+#                 'out03_subject_behav_svr_smry_ptd.csv',
+#                 'out03_subject_behav_svr_smry_soc.csv')
+
+# trained with all subjects:
+# complete file with all bias correction models:
+file_list = list('out03_scatter_data_allsubjects_trained_SVR_Multi-modal_HC.csv',
+                 'out03_scatter_data_allsubjects_trained_SVR_Multi-modal_smry_phb.csv',
+                 'out03_scatter_data_allsubjects_trained_SVR_Multi-modal_smry_ptd.csv',
+                 'out03_scatter_data_allsubjects_trained_SVR_Multi-modal_smry_soc.csv')
+
+
+result.list = list(HC = NA, Phobia = NA, PTSD = NA, SocPho = NA)
+
+for (i in 1:length(file_list)){
+  ifile = paste('result/disorders/', file_list[[i]], sep = '')
+  
+  data.behav = read.csv(ifile)
+  
+  #data.behav$Sex = NULL
+  data.behav$SUBJID = NULL
+  data.behav$age.gap = NULL
+  data.behav$age.gap.corr = NULL
+  data.behav$age.gap.corr.sex = NULL
+  data.behav$age.gap.corr.intersex = NULL
+  data.behav$brain.age.fit = NULL
+  #data.behav$brain.age.fit.sex = NULL
+  data.behav$brain.age.fit.intersex = NULL
+  
+  data.behav$brain.age = NULL
+  data.behav$chronological.age = NULL
+  
+  data.behav = data.behav[complete.cases(data.behav), ]
+  binary.col = which(colnames(data.behav)=='Sex') 
+  data.behav[, -binary.col] = scale.0.1(data.behav[, -binary.col])
+  #data.behav$chronological.age2 = data.behav$chronological.age^2 
+  
+  # Fit the full model 
+  full.model <- lm(brain.age.fit.sex ~., data = data.behav)
+  
+  # Stepwise regression model
+  step.model <- stepAIC(full.model, direction = step.direction, 
+                        trace = FALSE)
+  step.summary = summary(step.model)
+  
+  result = step.summary$coefficients[, c(1,4)]
+  result = rbind(result, as.matrix(t(c(step.summary$adj.r.squared, ''))))
+  row.names(result)[nrow(result)] = 'Adjusted Rsquared'
+  
+  result.list[[i]] =  as.data.frame(result)
+
+}
+
+
+```
+```{r}
+for(i in 1:length(result.list)){
+  colnames(result.list[[i]]) <- paste0( names(result.list)[i], "_", colnames(result.list[[i]]) )
+  result.list[[i]]$ROWNAMES  <- rownames(result.list[[i]])
+}
+ 
+out <- join_all( result.list, by="ROWNAMES", type="full" )
+rownames(out) <- out$ROWNAMES; 
+out$ROWNAMES <- NULL
+
+idx.rsquare = which(rownames(out)=='Adjusted Rsquared')
+out = rbind(out[-idx.rsquare,], out[idx.rsquare,])
+print(out)
+
+#write.csv(out, 'result/disorders/stepwise_regression_backward_HCtrained_brain.age.fit.sex_svr.csv')
+write.csv(out, 'result/disorders/stepwise_regression_backward_brain.age.fit.sex_svr.csv')
+
+```
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

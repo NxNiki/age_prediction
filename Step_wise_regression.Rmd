@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# stepwise regression with behavioral scores to predict brain age gap:
+
+data.behav = read.csv('result/allsubjects/out03_subject_behav_ridge.csv')
+data.behav$SUBJID = NULL
+#data.behav$chronological.age = NULL
+
+data.behav = data.behav[complete.cases(data.behav), ]
+binary.col = which(colnames(data.behav)=='Sex') 
+data.behav[, -binary.col] = scale(data.behav[, -binary.col])
+
+library(MASS)
+# Fit the full model 
+full.model <- lm(age.gap ~., data = data.behav)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = "both", 
+                      trace = FALSE)
+summary.ridge = summary(step.model)
+
+result.ridge = summary.ridge$coefficients[, c(1,4)]
+result.ridge = rbind(result.ridge, as.matrix(t(c(summary.ridge$adj.r.squared, ''))))
+row.names(result.ridge)[nrow(result.ridge)] = 'Adjusted Rsquared'
+
+```
+
+```{r}
+# stepwise regression with behavioral scores to predict brain age gap:
+
+data.behav = read.csv('result/allsubjects/out03_subject_behav_svr.csv')
+data.behav$SUBJID = NULL
+#data.behav$chronological.age = NULL
+
+
+data.behav = data.behav[complete.cases(data.behav), ]
+binary.col = which(colnames(data.behav)=='Sex') 
+data.behav[, -binary.col] = scale(data.behav[, -binary.col])
+
+library(MASS)
+# Fit the full model 
+full.model <- lm(age.gap ~., data = data.behav)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = "both", 
+                      trace = FALSE)
+
+summary.svr = summary(step.model)
+result.svr = summary.svr$coefficients[, c(1,4)]
+result.svr = rbind(result.svr, as.matrix(t(c(summary.svr$adj.r.squared, ''))))
+row.names(result.svr)[nrow(result.svr)] = 'Adjusted Rsquared'
+```
+
+```{r}
+# stepwise regression with behavioral scores to predict brain age gap:
+
+data.behav = read.csv('result/allsubjects/out03_subject_behav_gpr.csv')
+data.behav$SUBJID = NULL
+#data.behav$chronological.age = NULL
+
+data.behav = data.behav[complete.cases(data.behav), ]
+binary.col = which(colnames(data.behav)=='Sex') 
+data.behav[, -binary.col] = scale(data.behav[, -binary.col])
+
+library(MASS)
+# Fit the full model 
+full.model <- lm(age.gap ~., data = data.behav)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = "both", 
+                      trace = FALSE)
+
+summary.gpr = summary(step.model)
+result.gpr = summary.gpr$coefficients[, c(1,4)]
+result.gpr = rbind(result.gpr, as.matrix(t(c(summary.gpr$adj.r.squared, ''))))
+row.names(result.gpr)[nrow(result.gpr)] = 'Adjusted Rsquared'
+
+```
+
+```{r}
+# stepwise regression with behavioral scores to predict brain age gap:
+
+data.behav = read.csv('result/allsubjects/out03_subject_behav_dnn.csv')
+data.behav$SUBJID = NULL
+#data.behav$chronological.age = NULL
+
+data.behav = data.behav[complete.cases(data.behav), ]
+binary.col = which(colnames(data.behav)=='Sex') 
+data.behav[, -binary.col] = scale(data.behav[, -binary.col])
+
+library(MASS)
+# Fit the full model 
+full.model <- lm(age.gap ~., data = data.behav)
+
+# Stepwise regression model
+step.model <- stepAIC(full.model, direction = "both", 
+                      trace = FALSE)
+summary.dnn = summary(step.model)
+result.dnn = summary.dnn$coefficients[, c(1,4)]
+result.dnn = rbind(result.dnn, as.matrix(t(c(summary.dnn$adj.r.squared, ''))))
+row.names(result.dnn)[nrow(result.dnn)] = 'Adjusted Rsquared'
+```
+
+```{r}
+
+library(plyr)
+
+result.list = list(ridge = as.data.frame(result.ridge),
+                   svr = as.data.frame(result.svr),
+                   gpr = as.data.frame(result.gpr),
+                   dnn = as.data.frame(result.dnn))
+
+
+for(i in 1:length(result.list)){
+  colnames(result.list[[i]]) <- paste0( names(result.list)[i], "_", colnames(result.list[[i]]) )
+  result.list[[i]]$ROWNAMES  <- rownames(result.list[[i]])
+}
+ 
+out <- join_all( result.list, by="ROWNAMES", type="full" )
+rownames(out) <- out$ROWNAMES; 
+out$ROWNAMES <- NULL
+
+idx.rsquare = which(rownames(out)=='Adjusted Rsquared')
+out = rbind(out[-idx.rsquare,], out[idx.rsquare,])
+print(out)
+
+#write.csv(out, 'result/allsubjects/stepwise_regression_nochroage.csv')
+write.csv(out, 'result/allsubjects/stepwise_regression.csv')
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

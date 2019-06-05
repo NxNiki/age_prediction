@@ -1,0 +1,47 @@
+---
+title: "simulation_nonlinear"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(MASS)
+
+beta = c(1, 1, -.5)
+x = rnorm(100, 0, 1)
+x2 = x^2
+X = t(rbind(rep(1,100), x, x2))
+X1 = t(rbind(rep(1,100), x))
+beta1 = c(1, 1)
+#y = X %*% beta + rnorm(100, 0, .5)
+y = X1 %*% beta1 + rnorm(100, 0, .5)
+
+
+theta = ginv(t(X1) %*% X1) %*% t(X1) %*% y
+
+yhat = X1 %*% theta
+
+plot(x, y)
+plot(y, yhat)
+plot(y, yhat-y)
+plot(yhat, yhat-y)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
